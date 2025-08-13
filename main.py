@@ -171,6 +171,7 @@ def single_domain_training(model, device):
             print_freq=args.print_freq,
             flush=args.flush
         )
+        criterion.clear_positive_logits()
         # Save the best checkpoint
         map50 = np.asarray([ap for ap in ap50_per_class if ap > -0.001]).mean().tolist()
         if map50 > ap50_best:
@@ -254,6 +255,7 @@ def cross_domain_mae(model, device):
             print_freq=args.print_freq,
             flush=args.flush
         )
+        criterion.clear_positive_logits()
         # Save the best checkpoint
         map50 = np.asarray([ap for ap in ap50_per_class if ap > -0.0001]).mean().tolist()
         if map50 > ap50_best:
@@ -369,6 +371,9 @@ def teaching(model_stu, device):
             print_freq=args.print_freq,
             flush=args.flush
         )
+        # Renew thresholds
+        thresholds = criterion.dynamic_threshold(thresholds)
+        criterion.clear_positive_logits()
         # Save the best checkpoint
         map50_tch = np.asarray([ap for ap in ap50_per_class_teacher if ap > -0.001]).mean().tolist()
         map50_stu = np.asarray([ap for ap in ap50_per_class_student if ap > -0.001]).mean().tolist()
