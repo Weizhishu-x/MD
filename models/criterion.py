@@ -266,7 +266,7 @@ class SetCriterion(nn.Module):
         labels = logits[idx].argmax(dim=1)
         pos_logits = logits[idx].max(dim=1).values
         for label, logit in zip(labels, pos_logits):
-            self.logits_sum[label] += logit
+            self.logits_sum[label] += logit.detach()
             self.logits_count[label] += 1
 
     def dynamic_threshold(self, thresholds):
@@ -390,3 +390,4 @@ def get_pseudo_labels(pred_logits, pred_boxes, thresholds, nms_threshold=0.7):
         scores, labels, boxes = scores[nms_idx], labels[nms_idx], boxes[nms_idx, :]
         pseudo_labels.append({'scores': scores, 'labels': labels, 'boxes': boxes})
     return pseudo_labels
+
