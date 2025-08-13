@@ -142,72 +142,6 @@ def train_one_epoch_with_mae(model: torch.nn.Module,
     return epoch_loss, epoch_loss_dict
 
 
-def train_one_epoch_with_mae_bk(model: torch.nn.Module,
-                             criterion: torch.nn.Module,
-                             criterion_mae: torch.nn.Module,
-                             source_loader: DataLoader,
-                             target_loader: DataLoader,
-                             coef_target: float,
-                             optimizer: torch.optim.Optimizer,
-                             device: torch.device,
-                             epoch: int,
-                             clip_max_norm: float = 0.0,
-                             print_freq: int = 20,
-                             flush: bool = True):
-    start_time = time.time()
-    model.train()
-    criterion.train()
-    criterion_mae.train()
-    source_fetcher = DataPreFetcher(source_loader, device=device)
-    target_fetcher = DataPreFetcher(target_loader, device=device)
-    source_samples, source_annotations = source_fetcher.next()
-    target_samples, _ = target_fetcher.next()
-    # Training statistics
-    epoch_loss = torch.zeros(1, dtype=torch.float, device=device, requires_grad=False)
-    epoch_loss_dict = defaultdict(float)
-    total_iters = min(len(source_loader), len(target_loader))
-    for i in range(total_iters):
-        # Source forward
-        out = model(source_samples)
-        # Target forward
-        # mask_ratio = 0.7 + 0.02 * epoch if epoch <= 10 else 0.9
-        out_mae = model(target_samples, enable_mae=True, mask_ratio=0.75)
-        # Loss
-        loss_dict = criterion(out, source_annotations)
-        loss_dict_mae = criterion_mae(out_mae)
-        weight_dict = criterion.weight_dict
-        loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
-        loss_mae = sum(loss_dict_mae[k] * weight_dict[k] for k in loss_dict_mae.keys() if k in weight_dict)
-        loss += loss_mae * coef_target 
-        loss_dict['loss_mae'] = loss_dict_mae['loss_mae']
-        # Backward
-        optimizer.zero_grad()
-        loss.backward()
-        if clip_max_norm > 0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_max_norm)
-        optimizer.step()
-        # Record loss
-        epoch_loss += loss.detach()
-        for k, v in loss_dict.items():
-            epoch_loss_dict[k] += v.detach().cpu().item()
-        # Data pre-fetch
-        source_samples, source_annotations = source_fetcher.next()
-        target_samples, _ = target_fetcher.next()
-        # Log
-        if is_main_process() and (i + 1) % print_freq == 0:
-            print('Cross-domain MAE training epoch ' + str(epoch) + ' : [ ' + str(i + 1) + '/' +
-                  str(total_iters) + ' ] ' + 'total loss: ' + str(loss.detach().cpu().numpy()), flush=flush)
-    # Final process of training statistic
-    epoch_loss /= total_iters
-    for k, v in epoch_loss_dict.items():
-        epoch_loss_dict[k] /= total_iters
-    end_time = time.time()
-    total_time_str = str(datetime.timedelta(seconds=int(end_time - start_time)))
-    print('Cross-domain MAE training epoch ' + str(epoch) + ' finished. Time cost: ' + total_time_str +
-          ' Epoch loss: ' + str(epoch_loss.detach().cpu().numpy()), flush=flush)
-    return epoch_loss, epoch_loss_dict
-
-
 def train_one_epoch_teaching(student_model: torch.nn.Module,
                              teacher_model: torch.nn.Module,
                              criterion: torch.nn.Module,
@@ -515,3 +449,4 @@ def calculate_iou(box1, box2):
     union_area = box1_area + box2_area - inter_area
 
     return inter_area / union_area
+
