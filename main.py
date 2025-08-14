@@ -374,6 +374,7 @@ def teaching(model_stu, device):
         # Renew thresholds
         thresholds = criterion.dynamic_threshold(thresholds)
         criterion.clear_positive_logits()
+        criterion_pseudo.clear_positive_logits()
         # Save the best checkpoint
         map50_tch = np.asarray([ap for ap in ap50_per_class_teacher if ap > -0.001]).mean().tolist()
         map50_stu = np.asarray([ap for ap in ap50_per_class_student if ap > -0.001]).mean().tolist()
